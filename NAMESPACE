@@ -1,0 +1,7 @@
+export(GFiler2D_bf)
+export(aperm2cv)
+export(filter2D_cv)
+export(matchTemplate_cv)
+export(thinning)
+import(Rcpp)
+useDynLib(opencv)

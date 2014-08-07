@@ -52,30 +52,17 @@ BEGIN_RCPP
     return __sexp_result;
 END_RCPP
 }
-// test_cv3
-int test_cv3();
-RcppExport SEXP opencv_test_cv3() {
-BEGIN_RCPP
-    SEXP __sexp_result;
-    {
-        Rcpp::RNGScope __rngScope;
-        int __result = test_cv3();
-        PROTECT(__sexp_result = Rcpp::wrap(__result));
-    }
-    UNPROTECT(1);
-    return __sexp_result;
-END_RCPP
-}
 // thinningFromR
-NumericVector thinningFromR(NumericVector RMat, double threshold = 10);
-RcppExport SEXP opencv_thinningFromR(SEXP RMatSEXP, SEXP thresholdSEXP) {
+NumericVector thinningFromR(NumericVector RMat, int method = 0, double threshold = 0);
+RcppExport SEXP opencv_thinningFromR(SEXP RMatSEXP, SEXP methodSEXP, SEXP thresholdSEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
         Rcpp::RNGScope __rngScope;
         Rcpp::traits::input_parameter< NumericVector >::type RMat(RMatSEXP );
+        Rcpp::traits::input_parameter< int >::type method(methodSEXP );
         Rcpp::traits::input_parameter< double >::type threshold(thresholdSEXP );
-        NumericVector __result = thinningFromR(RMat, threshold);
+        NumericVector __result = thinningFromR(RMat, method, threshold);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);
@@ -100,8 +87,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // filter2D_cv
-NumericVector filter2D_cv(const NumericVector& image, const NumericVector& kernel, NumericVector anchor, double delta = 0);
-RcppExport SEXP opencv_filter2D_cv(SEXP imageSEXP, SEXP kernelSEXP, SEXP anchorSEXP, SEXP deltaSEXP) {
+NumericVector filter2D_cv(const NumericVector& image, const NumericVector& kernel, NumericVector anchor, double delta = 0, int borderType = 4);
+RcppExport SEXP opencv_filter2D_cv(SEXP imageSEXP, SEXP kernelSEXP, SEXP anchorSEXP, SEXP deltaSEXP, SEXP borderTypeSEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
@@ -110,7 +97,8 @@ BEGIN_RCPP
         Rcpp::traits::input_parameter< const NumericVector& >::type kernel(kernelSEXP );
         Rcpp::traits::input_parameter< NumericVector >::type anchor(anchorSEXP );
         Rcpp::traits::input_parameter< double >::type delta(deltaSEXP );
-        NumericVector __result = filter2D_cv(image, kernel, anchor, delta);
+        Rcpp::traits::input_parameter< int >::type borderType(borderTypeSEXP );
+        NumericVector __result = filter2D_cv(image, kernel, anchor, delta, borderType);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);

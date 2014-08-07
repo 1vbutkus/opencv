@@ -14,18 +14,79 @@ using namespace Rcpp;
 // @author - Nashruddin Amin, see:http://opencv-code.com
 
 /**
- * Code for thinning a binary image using Zhang-Suen algorithm.
- */
-
-
-/**
+ * Code for thinning a binary image using Guo-Hall algorithm.
  * Perform one thinning iteration.
  * Normally you wouldn't call this function directly from your code.
  *
  * @param  im    Binary image with range = 0-1
  * @param  iter  0=even, 1=odd
  */
-void thinningIteration(cv::Mat& im, int iter)
+void thinningGuoHallIteration(cv::Mat& im, int iter)
+{
+    cv::Mat marker = cv::Mat::zeros(im.size(), CV_8UC1); 
+
+    for (int i = 1; i < im.rows; i++)
+    {
+        for (int j = 1; j < im.cols; j++)
+        {
+            uchar p2 = im.at<uchar>(i-1, j);
+            uchar p3 = im.at<uchar>(i-1, j+1);
+            uchar p4 = im.at<uchar>(i, j+1);
+            uchar p5 = im.at<uchar>(i+1, j+1);
+            uchar p6 = im.at<uchar>(i+1, j);
+            uchar p7 = im.at<uchar>(i+1, j-1);
+            uchar p8 = im.at<uchar>(i, j-1); 
+            uchar p9 = im.at<uchar>(i-1, j-1);
+
+            int C  = (!p2 & (p3 | p4)) + (!p4 & (p5 | p6)) +
+                     (!p6 & (p7 | p8)) + (!p8 & (p9 | p2));
+            int N1 = (p9 | p2) + (p3 | p4) + (p5 | p6) + (p7 | p8);
+            int N2 = (p2 | p3) + (p4 | p5) + (p6 | p7) + (p8 | p9);
+            int N  = N1 < N2 ? N1 : N2;
+            int m  = iter == 0 ? ((p6 | p7 | !p9) & p8) : ((p2 | p3 | !p5) & p4);
+
+            if (C == 1 && (N >= 2 && N <= 3) & m == 0)
+                marker.at<uchar>(i,j) = 1;
+        }
+    }
+
+    im &= ~marker;
+}
+
+/**
+ * Code for thinning a binary image using Guo-Hall algorithm.
+ * Function for thinning the given binary image
+ *
+ * @param  im  Binary image with range = 0-255
+ */
+void thinningGuoHall(cv::Mat& im)
+{
+    im /= 255;
+
+    cv::Mat prev = cv::Mat::zeros(im.size(), CV_8UC1);
+    cv::Mat diff;
+
+    do {
+        thinningGuoHallIteration(im, 0);
+        thinningGuoHallIteration(im, 1);
+        cv::absdiff(im, prev, diff);
+        im.copyTo(prev);
+    } 
+    while (cv::countNonZero(diff) > 0);
+
+    im *= 255;
+}
+
+
+/**
+ * Code for thinning a binary image using Zhang-Suen algorithm. (ZhangSuen)
+ * Perform one thinning iteration.
+ * Normally you wouldn't call this function directly from your code.
+ *
+ * @param  im    Binary image with range = 0-1
+ * @param  iter  0=even, 1=odd
+ */
+void thinningZhangSuenIteration(cv::Mat& im, int iter)
 {
     cv::Mat marker = cv::Mat::zeros(im.size(), CV_8UC1);
 
@@ -59,12 +120,13 @@ void thinningIteration(cv::Mat& im, int iter)
 }
 
 /**
+ * Code for thinning a binary image using Zhang-Suen algorithm. (ZhangSuen)
  * Function for thinning the given binary image
  *
  * @param  im  Binary image with range = 0-255
  */
  
-void thinning(cv::Mat& im)
+void thinningZhangSuen(cv::Mat& im)
 {
     im /= 255;
 
@@ -72,8 +134,8 @@ void thinning(cv::Mat& im)
     cv::Mat diff;
 
     do {
-        thinningIteration(im, 0);
-        thinningIteration(im, 1);
+        thinningZhangSuenIteration(im, 0);
+        thinningZhangSuenIteration(im, 1);
         cv::absdiff(im, prev, diff);
         im.copyTo(prev);
     } 
@@ -82,61 +144,36 @@ void thinning(cv::Mat& im)
     im *= 255;
 }
 
-/**
- * This is an example on how to call the thinning function above.
- */
-int showmain()
-{
-    cv::Mat src = cv::imread("test_image.png");
-    if (src.empty())
-        return -1;
-
-    cv::Mat bw;
-    cv::cvtColor(src, bw, CV_BGR2GRAY);
-    cv::threshold(bw, bw, 10, 255, CV_THRESH_BINARY);
-
-    thinning(bw);
-
-    cv::imshow("src", src);
-    cv::imshow("dst", bw);
-    cv::waitKey(0);
-
-    return 0;
-}
-
-
-
 
 // #################################################################################### //
 // ###################################### MINE CODE ################################### //
 // #################################################################################### //
 
 
-
-
-
-
-
-
  
-//' aaa
+//' Aperm in C
 //' 
-//' ...
+//' Transform data ordering
 //' 
-//' \deqn{ v_p(f) = \sup \left\{ \sum_{i=1}^m |f(t_i) -
-//' f(t_{i-1})|^p : 0=t_0<t_1<\dots<t_m=1 \right\} }{ v_p(f) =
-//' sup { \sum |f(t_i) - f(t_{i-1})|^p : 0=t_0<t_1<\dots<t_m=1}
-//' }
+//' Function \code{\link{aperm}} is generalization of transpose function (\code{\link{t}}) that works for arrays.
+//' We need this function for communication between R array and cv:mat.
+//' The order of data in cv:mat (on 2x2x2 input) goes like this: r1c1C1 r1c1C2 r1c2C1 ...
+//' While the order of data in R (on same input): r1c1C1 r2c1C1 r1c2C1 ...
 //' 
-//' @return The vector of index of change points.
-//' @param RMat \code{numeric} vector.
-//' @param resize \code{numeric} vector.
+//' This function calls \code{\link{aperm}} function form C (it is not the most effective way, but it works).
+//' 
+//' Actually, we don't need this function in R, this it is loaded for debugging purposes.
+//' 
+//' @return An array with transformed data
+//' @param RMat \code{numeric} array.
+//' @param resize a flag indicating whether the vector should be resized as well as having its elements reordered (default \code{TRUE}).
+//' @keywords internal
 //' @export
 // [[Rcpp::export]]
 NumericVector aperm2cv(NumericVector RMat, bool resize=true){
   // The order of cv:mat (on 2x2x2 input) goes like this: r1c1C1 r1c1C2 r1c2C1 ...
   // While the order of R (on same input): r1c1C1 r2c1C1 r1c2C1 ...
-  // So in order of comunication, we need reorder  
+  // So in order of communication, we need reorder  
 
 
   int nrow,  ncol, nchan;
@@ -164,7 +201,7 @@ NumericVector aperm2cv(NumericVector RMat, bool resize=true){
     ncol = dim[1];
     nchan = dim[2];
   } else 
-    stop("The number of input dimesnions must be betwine 1 and 3.");   
+    stop("The number of input dimensions must be between 1 and 3.");   
   
   // independently on original dim, we set dim to be of length 3 (easyer in reording)
   NumericVector dumdim(3);
@@ -179,7 +216,7 @@ NumericVector aperm2cv(NumericVector RMat, bool resize=true){
   perm[1] = 2;
   perm[2] = 1;
 
-  // calling aperm function from R (migth be more efective way, I just want to awoid bugs)
+  // calling aperm function from R (might be more effective way, I just want to avoid bugs)
   Function aperm("aperm");
   NumericVector res = aperm(RMat, Rcpp::Named("perm", perm), Rcpp::Named("resize", false));
 
@@ -222,7 +259,7 @@ NumericVector CvMat2RMat(const cv::Mat& cvMat){
   cv::Mat cvMatRes; 
   cvMat.convertTo(cvMatRes, CV_64F); 
  
-  // checking if continuous (usaly the case), because we will pass data by ref.
+  // checking if continuous (usually the case), because we will pass data by ref.
   if (!cvMatRes.isContinuous()){
     cvMatRes = cvMatRes.clone();
   }
@@ -262,8 +299,9 @@ NumericVector CvMat2RMat(const cv::Mat& cvMat){
 // [[Rcpp::export]]
 NumericVector test_cv1(NumericVector& RMat, bool show=true){
   cv::Mat cvMat = RMat2CvMat(RMat);
-  if(show)
-    std::cout << "img = " << std::endl << " " << cvMat << std::endl << std::endl;
+  if(show){
+  //  std::cout << "img = " << std::endl << " " << cvMat << std::endl << std::endl;
+  }
   NumericVector res = CvMat2RMat(cvMat);
   return res;
 }
@@ -283,32 +321,33 @@ NumericVector test_cv2(const NumericVector& RMat){
   return res;
 }
 
-// [[Rcpp::export]]
-int test_cv3(){
-  std::cout << "CV_TM_SQDIFF = " << std::endl << " " << CV_TM_SQDIFF << std::endl << std::endl;
-  std::cout << "CV_TM_SQDIFF_NORMED = " << std::endl << " " << CV_TM_SQDIFF_NORMED << std::endl << std::endl;
-  std::cout << "CV_TM_CCORR = " << std::endl << " " << CV_TM_CCORR << std::endl << std::endl;
-  std::cout << "CV_TM_CCORR_NORMED = " << std::endl << " " << CV_TM_CCORR_NORMED << std::endl << std::endl;
-  std::cout << "CV_TM_CCOEFF = " << std::endl << " " << CV_TM_CCOEFF << std::endl << std::endl;
-  std::cout << "CV_TM_CCOEFF_NORMED = " << std::endl << " " << CV_TM_CCOEFF_NORMED << std::endl << std::endl;
-  return 0;
-}
 
-
-
-
-//' aaa
+//' Thinning 
 //' 
-//' ...
+//' Thinning a binary image
 //' 
-//' asa
+//' This function performs thinning procedures for binary images. Two algorithms are implemented, namely:
+//' Guo-Hall and Zhang-Suen lagorithms.
 //' 
-//' @return The vector of index of change points.
-//' @param RMat \code{numeric} vector.
-//' @param threshold \code{numeric} vector.
+//' @author The core of code was written by Nashruddin Amin and posted in http://opencv-code.com blog.
+//' @return The matrix of transformed image.
+//' @param RMat a \code{matrix} of image.
+//' @param method \code{numeric} 0 or 1. If \code{method==0} (the default) Guo-Hall algorith is applied.  If \code{method==1} Zhang-Suen algorithm is applied.
+//' @param threshold a threshold value that separates 0 and 1 (black and white). If \code{0} (the default) no threshold is applied (i.e. the values remains continuous) 
 //' @export
+//' @examples
+//' if(require("png") & require("raster")){
+//'   img <- img2grayscale(readPNG(system.file("pictures", "FatNote.png", package="opencv")))
+//'   thinimg0 <- thinning(img, method=0)
+//'   thinimg1 <- thinning(img, method=1)
+//'   op = par(mfrow = c(3, 1), mar=c(2,2,2,1))
+//'   plotImg(img, main="original")
+//'   plotImg(thinimg0, main="thinning (method=0)")
+//'   plotImg(thinimg1, main="thinning (method=1)")
+//'   par(op)
+//' }     
 // [[Rcpp::export(thinning)]]
-NumericVector thinningFromR(NumericVector RMat, double threshold=10){
+NumericVector thinningFromR(NumericVector RMat, int method=0, double threshold=0){
   // RMat must be single chanel
 
 
@@ -339,8 +378,9 @@ NumericVector thinningFromR(NumericVector RMat, double threshold=10){
  
   cvMat.convertTo(bw, CV_8U, alpha=alpha); //CV_8UC1  the number of channels are the same as the input has
   
-  cv::threshold(bw, bw, threshold, 255, CV_THRESH_BINARY);
-  
+  if (threshold>0){
+    cv::threshold(bw, bw, threshold, 255, CV_THRESH_BINARY);
+  }
   
 //  cv::minMaxLoc(bw, &minVal, &maxVal, &minLoc, &maxLoc );
 //  //std::cout << "img = " << std::endl << " " << cvMat << std::endl << std::endl;
@@ -348,7 +388,15 @@ NumericVector thinningFromR(NumericVector RMat, double threshold=10){
 //  std::cout << "bw.maxVal = " << maxVal << std::endl;
 //  std::cout << "bw.channels() = " << bw.channels() << std::endl;
   
-  thinning(bw);
+  
+  if(method==0){
+    thinningGuoHall(bw);
+  }else if (method==1){
+    thinningZhangSuen(bw);
+  } else {
+    stop("Unknown method.") ;
+  }
+  
   
   // bw = cvMat;
   bw /= alpha;
@@ -358,12 +406,17 @@ NumericVector thinningFromR(NumericVector RMat, double threshold=10){
 
 
 
-
-
-
-//' Linear 2d filter from opencv
+//' matchTemplate
 //' 
-//' ...
+//' matchTemplate function from opencv library
+//' 
+//' This function calls matchTemplate function form opencv library. For special details see documentation of
+//' opencv. 
+//' 
+//' The function slides through image, compares the overlapped patches against templ using 
+//' the specified method and stores the comparison results in result . 
+//' Here are the formula for the available comparison methods ( I denotes image, T template, R result ).
+//' The method must be number from 0 to 5.  
 //' 
 //' \code{method=0}(SQDIFF)
 //' \deqn{ R(x, y) = \sum (T(x', y') - I(x+x', y+y'))^2  }
@@ -387,12 +440,31 @@ NumericVector thinningFromR(NumericVector RMat, double threshold=10){
 //' \deqn{ T' = T - mean(T)} 
 //' \deqn{ I'(x,y) = I(x,y) - mean(I, by=(x', y'))}
 //' 
+//' @seealso GFiler2D_bf
 //' 
-//' @return The vector of index of change points.
-//' @param image \code{numeric} vector.
-//' @param templ \code{numeric} vector.
-//' @param method \code{numeric} vector.
+//' @return A 2D matrix with \eqn{R} values.
+//' @param image \code{numeric} array (2D ir 3D) of image data.
+//' @param templ \code{numeric} array (2D ir 3D) of image data. The size of \code{templ} must be not greater then \code{image}.
+//' @param method \code{integer} value form 0 to 5. See details.
 //' @export
+//' @examples
+//' if(require("png") & require("raster")){
+//'   img <- readPNG(system.file("pictures", "minesweeper.png", package="opencv"))
+//'   tm <- readPNG(system.file("pictures", "minesweeper_bomb.png", package="opencv"))
+//'   op = par(mfrow = c(1, 2), mar=c(2,2,2,1))
+//'   plotImg(img, main="image")
+//'   plotImg(tm, main="template")
+//'   par(op)
+//'   filter <- matchTemplate_cv(img, tm, method=1)
+//'   ids <- which(filter<=0.001)
+//'   length(ids)
+//'   rowids <- row(filter)[ids]
+//'   colids <- col(filter)[ids]
+//'   op = par(mfrow = c(1, 1), mar=c(2,2,2,1))
+//'   plotImg(img, main="image")
+//'   points(colids, -rowids, pch=19, col=3)
+//'   par(op)
+//' }
 // [[Rcpp::export]]
 NumericVector matchTemplate_cv(const NumericVector& image, const NumericVector& templ, int method=0){
   // bender to cv::matchTemplate function
@@ -407,6 +479,13 @@ NumericVector matchTemplate_cv(const NumericVector& image, const NumericVector& 
   cv::Mat tmp = RMat2CvMat(templ);  
   img.convertTo(img, CV_32F);
   tmp.convertTo(tmp, CV_32F);
+  if(img.type() != tmp.type()){
+    // std::cout << "img.type() = " << img.type() << std::endl; 
+    // std::cout << "tmp.type() = " << tmp.type() << std::endl; 
+    stop("the img matrix type do not match the tmp matrix type. It's probably the number of channels.");
+  }
+  
+  
   
   /// Create the result matrix
   int result_cols =  img.cols - tmp.cols + 1;
@@ -427,20 +506,66 @@ NumericVector matchTemplate_cv(const NumericVector& image, const NumericVector& 
 }
 
 
-//' Linear 2d filter from opencv
+//' Linear 2D filter
 //' 
-//' ...
+//' Linear 2D filter from opencv
 //' 
-//' ...
+//' This function calls filter2D function from opencv. For special details see documentation of
+//' opencv. 
 //' 
-//' @return The vector of index of change points.
+//' The borderType must be in \code{0:4}. It is pixel extrapolation method in area of borders. The meaning of values:
+//' \itemize{
+//'   \item 0 BORDER_CONSTANT 	
+//'   \item 1 BORDER_REPLICATE   
+//'   \item 2 BORDER_REFLECT   
+//'   \item 3 BORDER_WRAP   
+//'   \item 4 BORDER_DEFAULT   
+//' }
+//' 
+//' @return An array with the same dimensiosn as \code{image}. If you don't need borders, you have to crop it your self.
 //' @param image \code{numeric} vector.
 //' @param kernel \code{numeric} vector.
 //' @param anchor \code{numeric} vector.
 //' @param delta \code{numeric} vector.
+//' @param borderType \code{numeric} vector.
 //' @export
+//' @examples
+//' if(require("png") & require("raster")){
+//'   ### the meaning of borders
+//'   img <- readPNG(system.file("pictures", "art.png", package="opencv"))
+//'   gaus <- function(x, y, sigma=1) 1/(2*pi*sigma^2)*exp(-1/(2*sigma^2)*(x^2+y^2))
+//'   fil <- outer(-30:30, -30:30, gaus, sigma=7)
+//'   fil <- fil/sum(fil)
+//'   plotImg(fil/max(fil), main="filter")
+//'   f0 = filter2D_cv(img, kernel=fil, anchor=c(-1,-1), borderType=0)
+//'   f1 = filter2D_cv(img, kernel=fil, anchor=c(-1,-1), borderType=1)
+//'   f2 = filter2D_cv(img, kernel=fil, anchor=c(-1,-1), borderType=2)
+//'   f3 = filter2D_cv(img, kernel=fil, anchor=c(-1,-1), borderType=3)
+//'   f4 = filter2D_cv(img, kernel=fil, anchor=c(-1,-1), borderType=4)
+//'   op = par(mfrow = c(3, 2), mar=c(2,2,2,1))
+//'   plotImg(img, main="original")
+//'   plotImg(f0, main="BORDER_CONSTANT (0)")
+//'   plotImg(f1, main="BORDER_REPLICATE (1)")
+//'   plotImg(f2, main="BORDER_REFLECT (2)")
+//'   plotImg(f3, main="BORDER_WRAP (3)")
+//'   plotImg(f4, main="BORDER_DEFAULT (4)")
+//'   par(op)
+//'   
+//'   ### fat -> thin -> fat
+//'   img <- img2grayscale(readPNG(system.file("pictures", "FatNote.png", package="opencv")))
+//'   thinImg <- thinning(img)
+//'   fil = matrix(c(1, 2, 1, 2, 4, 2, 1, 2, 1), 3, 3)/4
+//'   plotImg(fil, main="filter")
+//'   filterimg = filter2D_cv(thinImg, kernel=fil, anchor=c(-1,-1))
+//'   filterimg[filterimg>1] = 1
+//'   op = par(mfrow = c(3, 1), mar=c(2,2,2,1))
+//'   plotImg(img, main="original")
+//'   plotImg(thinImg, main="thin")
+//'   plotImg(filterimg, main="back to fat")
+//'   par(op)
+//'} 
 // [[Rcpp::export]]
-NumericVector filter2D_cv(const NumericVector& image, const NumericVector& kernel, NumericVector anchor, double delta=0){
+NumericVector filter2D_cv(const NumericVector& image, const NumericVector& kernel, NumericVector anchor, double delta=0, int borderType=4){
   // bender
   
   cv::Mat src, dst, krnl;
@@ -455,9 +580,12 @@ NumericVector filter2D_cv(const NumericVector& image, const NumericVector& kerne
     stop("anchor must be of length 2.") ; 
   }  
   cv::Point anchorcv = cv::Point((int) anchor[0], (int) anchor[1]);
+  
+  if((borderType!=0) & (borderType!=1) & (borderType!=2) & (borderType!=3) & (borderType!=4)  ){
+    stop("borderType must be in 0:4.") ;
+  }
 
-
-  cv::filter2D(src, dst, CV_64F , krnl, anchorcv, delta, cv::BORDER_DEFAULT );
+  cv::filter2D(src, dst, CV_64F , krnl, anchorcv, delta, borderType );
   
   /// back to R
   NumericVector res = CvMat2RMat(dst); 
@@ -467,18 +595,45 @@ NumericVector filter2D_cv(const NumericVector& image, const NumericVector& kerne
 
 
 
-//' General form of 2d filter
+//' General form of 2D filter
 //' 
-//' ...
+//' Cutom made 2D fiter
 //' 
-//' Gener form filter. Returns matrix \code{res} with values \code{res[i,j] = sum((A[si, sj] - D)^p)}.
+//' General form filter. Returns matrix \code{res} with values \code{res[i,j] = sum(K*(A[si, sj] - D)^p)}.
+//' This filtering is very not efficient (it written in brute force sile). Nevertheless, it works good and it quite flexible.
+//' It allows to match template using masks (see examples).
 //' 
-//' @return The vector of index of change points.
-//' @param A \code{numeric} vector.
-//' @param D \code{numeric} vector.
-//' @param K \code{numeric} vector.
-//' @param p \code{numeric} vector.
+//' 
+//' @seealso matchTemplate_cv
+//' 
+//' @return The \code{matrix}.
+//' @param A big \code{matrix} that will be filtered.
+//' @param D samall \code{matrix} that will be used in difference.
+//' @param K samall \code{matrix} that will be used as kernel
+//' @param p the power of differences.
 //' @export
+//' @examples
+//' if(require("png") & require("raster")){
+//'   img <-readPNG(system.file("pictures", "minesweeper.png", package="opencv"))
+//'   tm <- readPNG(system.file("pictures", "minesweeper_bomb_transparent.png", package="opencv"))
+//'   op = par(mfrow = c(1, 2), mar=c(2,2,2,1))
+//'   plotImg(img, main="image")
+//'   plotImg(tm, main="template")
+//'   par(op)
+//'   w <- tm[,,4]
+//'   img2D <- img2grayscale(img)
+//'   tm2D <- img2grayscale(tm)
+//'   filter <- GFiler2D_bf(A=img2D, D=tm2D, K=w, p=2)
+//'   ids <- which(filter<=0.001)
+//'   length(ids)
+//'   rowids <- row(filter)[ids]
+//'   colids <- col(filter)[ids]
+//'   op = par(mfrow = c(1, 1), mar=c(2,2,2,1))
+//'   plotImg(img, main="image")
+//'   # note that the `red` boob also matched. 
+//'   points(colids, -rowids, pch=19, col=3) 
+//'   par(op)
+//' }
 // [[Rcpp::export]]
 NumericMatrix GFiler2D_bf(const NumericMatrix& A, const NumericMatrix& D,const NumericMatrix& K, const double p=1){
   double resval;
@@ -486,7 +641,7 @@ NumericMatrix GFiler2D_bf(const NumericMatrix& A, const NumericMatrix& D,const N
   
   // D and K must match
   if ((D.nrow()!=K.nrow()) or (D.ncol()!=K.ncol())){
-    stop("D and K dimenstion mast match!") ;
+    stop("D and K dimensions mast match!") ;
   }
   FR = D.nrow();
   FC = D.ncol();

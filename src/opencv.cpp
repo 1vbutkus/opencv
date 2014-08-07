@@ -203,7 +203,7 @@ NumericVector aperm2cv(NumericVector RMat, bool resize=true){
   } else 
     stop("The number of input dimensions must be between 1 and 3.");   
   
-  // independently on original dim, we set dim to be of length 3 (easyer in reording)
+  // independently on original dim, we set dim to be of length 3 (easer in recording)
   NumericVector dumdim(3);
   dumdim[0] = nrow;
   dumdim[1] = ncol;
@@ -332,7 +332,7 @@ NumericVector test_cv2(const NumericVector& RMat){
 //' @author The core of code was written by Nashruddin Amin and posted in http://opencv-code.com blog.
 //' @return The matrix of transformed image.
 //' @param RMat a \code{matrix} of image.
-//' @param method \code{numeric} 0 or 1. If \code{method==0} (the default) Guo-Hall algorith is applied.  If \code{method==1} Zhang-Suen algorithm is applied.
+//' @param method \code{numeric} 0 or 1. If \code{method==0} (the default) Guo-Hall algorithm is applied.  If \code{method==1} Zhang-Suen algorithm is applied.
 //' @param threshold a threshold value that separates 0 and 1 (black and white). If \code{0} (the default) no threshold is applied (i.e. the values remains continuous) 
 //' @export
 //' @examples
@@ -443,8 +443,8 @@ NumericVector thinningFromR(NumericVector RMat, int method=0, double threshold=0
 //' @seealso GFiler2D_bf
 //' 
 //' @return A 2D matrix with \eqn{R} values.
-//' @param image \code{numeric} array (2D ir 3D) of image data.
-//' @param templ \code{numeric} array (2D ir 3D) of image data. The size of \code{templ} must be not greater then \code{image}.
+//' @param image \code{numeric} array (2D or 3D) of image data.
+//' @param templ \code{numeric} array (2D or 3D) of image data. The size of \code{templ} must be not greater then \code{image}.
 //' @param method \code{integer} value form 0 to 5. See details.
 //' @export
 //' @examples
@@ -522,12 +522,13 @@ NumericVector matchTemplate_cv(const NumericVector& image, const NumericVector& 
 //'   \item 4 BORDER_DEFAULT   
 //' }
 //' 
-//' @return An array with the same dimensiosn as \code{image}. If you don't need borders, you have to crop it your self.
-//' @param image \code{numeric} vector.
-//' @param kernel \code{numeric} vector.
-//' @param anchor \code{numeric} vector.
-//' @param delta \code{numeric} vector.
-//' @param borderType \code{numeric} vector.
+//' @return An array with the same dimensions as \code{image}. If you don't need borders, you have to crop it your self.
+//' @param image a \code{matrix} of image (or other numeric data).
+//' @param kernel a kernel \code{matrix}.
+//' @param anchor anchor of the kernel that indicates the relative position of a filtered point within the kernel; the anchor should lie within the kernel; 
+//' negalive values \code{c(-1,-1)} means that the anchor is at the kernel center.
+//' @param delta optional value added to the filtered pixels before storing them in result matrix.
+//' @param borderType pixel extrapolation method.
 //' @export
 //' @examples
 //' if(require("png") & require("raster")){
@@ -597,10 +598,10 @@ NumericVector filter2D_cv(const NumericVector& image, const NumericVector& kerne
 
 //' General form of 2D filter
 //' 
-//' Cutom made 2D fiter
+//' Custom made 2D filter
 //' 
 //' General form filter. Returns matrix \code{res} with values \code{res[i,j] = sum(K*(A[si, sj] - D)^p)}.
-//' This filtering is very not efficient (it written in brute force sile). Nevertheless, it works good and it quite flexible.
+//' This filtering is very not efficient (it written in brute force style). Nevertheless, it works good and it quite flexible.
 //' It allows to match template using masks (see examples).
 //' 
 //' 
@@ -608,8 +609,8 @@ NumericVector filter2D_cv(const NumericVector& image, const NumericVector& kerne
 //' 
 //' @return The \code{matrix}.
 //' @param A big \code{matrix} that will be filtered.
-//' @param D samall \code{matrix} that will be used in difference.
-//' @param K samall \code{matrix} that will be used as kernel
+//' @param D small \code{matrix} that will be used in difference.
+//' @param K small \code{matrix} that will be used as kernel
 //' @param p the power of differences.
 //' @export
 //' @examples

@@ -4,7 +4,7 @@ R package opencv
 This is a bender of *opencv* libraray (a good and well known C++ library for computer vision).
 The main purpose of this package to have some *opencv* functions in R.
 
-Up till now, there if only two functions that are brougt to R. 
+Up till now, only a few functions are brougt from opencv to R. 
 Nontheless, I hope this package will be extended.
 
 You maigth cosider downloading this package if :
@@ -15,7 +15,7 @@ You maigth cosider downloading this package if :
 In this case, please join this project and help bring *opencv* to R. Please, don't hesitate to contact my
 by Vygantas.Butkus@gmail.com
 
-If you want to use this package - you have to intall *opensv* library, see ...
+If you want to use this package - you have to intall *opensv* library, see http://opencv.org/.
 
 Hope sameone will have a benefit from this package.
 Best regards,
